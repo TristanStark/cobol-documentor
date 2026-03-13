@@ -92,7 +92,7 @@ def expand_copybooks(
             out.append(ln)
             continue
 
-        name = m.group(1)
+        name = m.group(1).rstrip(".")
         path = find_copybook(name, copy_dirs, copy_exts)
         if path is None:
             out.append(f"*UNRESOLVED_COPY* {name}.")
