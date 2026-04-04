@@ -1,0 +1,284 @@
+Programm(name=.\datas\chatgpt\PGMB002.cbl, Paragraphs=19)
+  └── PARAGRAPH : 0000-MAIN.
+    ├── PERFORM : PERFORM 1000-INIT THRU 1000-EXIT
+    ├── PERFORM : PERFORM 2000-OPEN-FILE THRU 2000-EXIT
+    ├── IF : WS-INFILE-STATUS NOT = '00'
+    │   ├── THEN
+    │   │   ├── DISPLAY 'ERROR OPEN INPUT FILE, STATUS=' WS-INFILE-STATUS
+    │   │   └── GOBACK
+    ├── PERFORM : PERFORM 3000-READ-LOOP THRU 3000-EXIT UNTIL EOF-REACHED
+    ├── PERFORM : PERFORM 9000-END THRU 9000-EXIT
+    ├── PERFORM : PERFORM UNTIL FIN
+    │   ├── PERFORM : PERFORM PATATE
+    │   └── END-PERFORM
+    ├── GOBACK
+    └── .
+  └── PARAGRAPH : 1000-INIT.
+    ├── MOVE : MOVE ZERO TO WS-LINE-NBR
+    ├── MOVE : MOVE ZERO TO WS-PROCESSED-NBR
+    ├── MOVE : MOVE ZERO TO WS-ERROR-NBR
+    ├── MOVE : MOVE ZERO TO WS-AMOUNT-N
+    ├── MOVE : MOVE ZERO TO WS-DEFAULT-FEE
+    ├── MOVE : MOVE ZERO TO WS-WORK-TOTAL
+    ├── SET EOF-NOT-REACHED TO TRUE
+    ├── SET INVALID-RECORD TO TRUE
+    ├── SET CALL-NOT-REQUIRED TO TRUE
+    ├── SET NORMAL-PRIORITY TO TRUE
+    └── .
+  └── PARAGRAPH : 1000-EXIT.
+    ├── EXIT
+    └── .
+  └── PARAGRAPH : 2000-OPEN-FILE.
+    ├── OPEN INPUT IN-FILE
+    └── .
+  └── PARAGRAPH : 2000-EXIT.
+    ├── EXIT
+    └── .
+  └── PARAGRAPH : 3000-READ-LOOP.
+    ├── READ IN-FILE AT END
+    ├── SET EOF-REACHED TO TRUE NOT AT END
+    ├── ADD 1 TO WS-LINE-NBR
+    ├── PERFORM : PERFORM 3100-CLEAR-CONTEXT THRU 3100-EXIT
+    ├── PERFORM : PERFORM 3200-PARSE-RECORD THRU 3200-EXIT
+    ├── PERFORM : PERFORM 3300-VALIDATE-RECORD THRU 3300-EXIT
+    ├── PERFORM : PERFORM 3400-DECIDE-ACTION THRU 3400-EXIT
+    ├── PERFORM : PERFORM 3500-OPTIONAL-CALL THRU 3500-EXIT
+    ├── END-READ
+    └── .
+  └── PARAGRAPH : 3000-EXIT.
+    ├── EXIT
+    └── .
+  └── PARAGRAPH : 3100-CLEAR-CONTEXT.
+    ├── MOVE : MOVE SPACES TO WS-F-REQ-ID
+    ├── MOVE : MOVE SPACES TO WS-F-CLIENT-ID
+    ├── MOVE : MOVE SPACES TO WS-F-ACCOUNT-ID
+    ├── MOVE : MOVE SPACES TO WS-F-ACTION
+    ├── MOVE : MOVE SPACES TO WS-F-CHANNEL
+    ├── MOVE : MOVE SPACES TO WS-F-COUNTRY
+    ├── MOVE : MOVE SPACES TO WS-F-CURRENCY
+    ├── MOVE : MOVE SPACES TO WS-F-AMOUNT
+    ├── MOVE : MOVE SPACES TO WS-F-PRIORITY
+    ├── MOVE : MOVE SPACES TO WS-F-PRODUCT
+    ├── MOVE : MOVE SPACES TO WS-F-FILLER
+    ├── MOVE : MOVE SPACES TO CPYB-REQ-ID
+    ├── MOVE : MOVE SPACES TO CPYB-CLIENT-ID
+    ├── MOVE : MOVE SPACES TO CPYB-ACCOUNT-ID
+    ├── MOVE : MOVE SPACES TO CPYB-ACTION-CODE
+    ├── MOVE : MOVE SPACES TO CPYB-CHANNEL
+    ├── MOVE : MOVE SPACES TO CPYB-COUNTRY
+    ├── MOVE : MOVE SPACES TO CPYB-CURRENCY
+    ├── MOVE : MOVE SPACES TO CPYB-STATUS
+    ├── MOVE : MOVE SPACES TO CPYB-SEGMENT
+    ├── MOVE : MOVE SPACES TO CPYB-PRODUCT
+    ├── MOVE : MOVE SPACES TO CPYB-DECISION-CODE
+    ├── MOVE : MOVE SPACES TO CPYB-ERR-CODE
+    ├── MOVE : MOVE SPACES TO CPYB-ERR-MSG
+    ├── MOVE : MOVE SPACES TO CPYB-DB-INFO
+    ├── MOVE : MOVE SPACES TO CPYB-ROUTING-CODE
+    ├── MOVE : MOVE SPACES TO CPYB-PGM-RETURN
+    ├── MOVE : MOVE SPACES TO CPYB-TRACE-ID
+    ├── MOVE : MOVE ZERO TO CPYB-AMOUNT
+    ├── MOVE : MOVE ZERO TO CPYB-FEE
+    ├── MOVE : MOVE ZERO TO CPYB-TOTAL
+    ├── MOVE : MOVE ZERO TO CPYB-PRIORITY
+    ├── MOVE : MOVE ZERO TO CPYB-RISK-LEVEL
+    ├── MOVE : MOVE ZERO TO WS-AMOUNT-N
+    ├── MOVE : MOVE ZERO TO WS-DEFAULT-FEE
+    ├── MOVE : MOVE ZERO TO WS-WORK-TOTAL
+    ├── SET CPYB-VALIDATION-KO TO TRUE
+    ├── SET CPYB-SQL-NOT-NEEDED TO TRUE
+    ├── SET CPYB-NOT-HIGH-AMOUNT TO TRUE
+    ├── SET CPYB-DOMESTIC-REQUEST TO TRUE
+    ├── SET CPYB-ACCOUNT-NOT-FOUND TO TRUE
+    ├── SET CPYB-CLIENT-NOT-BLOCKED TO TRUE
+    ├── SET CPYB-AUTO-REVIEW TO TRUE
+    ├── SET INVALID-RECORD TO TRUE
+    ├── SET CALL-NOT-REQUIRED TO TRUE
+    └── .
+  └── PARAGRAPH : 3100-EXIT.
+    ├── EXIT
+    └── .
+  └── PARAGRAPH : 3200-PARSE-RECORD.
+    ├── MOVE : MOVE IN-REC(1:12) TO WS-F-REQ-ID
+    ├── MOVE : MOVE IN-REC(13:10) TO WS-F-CLIENT-ID
+    ├── MOVE : MOVE IN-REC(23:12) TO WS-F-ACCOUNT-ID
+    ├── MOVE : MOVE IN-REC(35:2) TO WS-F-ACTION
+    ├── MOVE : MOVE IN-REC(37:3) TO WS-F-CHANNEL
+    ├── MOVE : MOVE IN-REC(40:3) TO WS-F-COUNTRY
+    ├── MOVE : MOVE IN-REC(43:3) TO WS-F-CURRENCY
+    ├── MOVE : MOVE IN-REC(46:11) TO WS-F-AMOUNT
+    ├── MOVE : MOVE IN-REC(57:1) TO WS-F-PRIORITY
+    ├── MOVE : MOVE IN-REC(58:4) TO WS-F-PRODUCT
+    ├── MOVE : MOVE IN-REC(60:61) TO WS-F-FILLER
+    ├── MOVE : MOVE WS-F-REQ-ID TO CPYB-REQ-ID
+    ├── MOVE : MOVE WS-F-CLIENT-ID TO CPYB-CLIENT-ID
+    ├── MOVE : MOVE WS-F-ACCOUNT-ID TO CPYB-ACCOUNT-ID
+    ├── MOVE : MOVE WS-F-ACTION TO CPYB-ACTION-CODE
+    ├── MOVE : MOVE WS-F-CHANNEL TO CPYB-CHANNEL
+    ├── MOVE : MOVE WS-F-COUNTRY TO CPYB-COUNTRY
+    ├── MOVE : MOVE WS-F-CURRENCY TO CPYB-CURRENCY
+    ├── MOVE : MOVE WS-F-PRODUCT TO CPYB-PRODUCT
+    ├── IF : WS-F-AMOUNT NUMERIC
+    │   ├── THEN
+    │   │   ├── MOVE : MOVE WS-F-AMOUNT TO WS-AMOUNT-N
+    │   │   └── MOVE : MOVE WS-AMOUNT-N TO CPYB-AMOUNT
+    │   └── ELSE
+    │       ├── MOVE : MOVE 'P001' TO CPYB-ERR-CODE
+    │       └── MOVE : MOVE 'AMOUNT IS NOT NUMERIC' TO CPYB-ERR-MSG
+    ├── IF : WS-F-PRIORITY NUMERIC
+    │   ├── THEN
+    │   │   └── MOVE : MOVE WS-F-PRIORITY TO CPYB-PRIORITY
+    │   └── ELSE
+    │       └── MOVE : MOVE 0 TO CPYB-PRIORITY
+    ├── MOVE : MOVE 'BATCHUSR' TO CPYB-CREATED-BY
+    ├── MOVE : MOVE '2026-03-09-12.00.00.000000' TO CPYB-CREATED-TS
+    ├── MOVE : MOVE 'BATCHUSR' TO CPYB-UPDATED-BY
+    ├── MOVE : MOVE '2026-03-09-12.00.00.000000' TO CPYB-UPDATED-TS
+    ├── MOVE : MOVE 'TRACE000000000001' TO CPYB-TRACE-ID
+    ├── MOVE : MOVE 20260309 TO CPYB-PROCESS-DATE
+    └── .
+  └── PARAGRAPH : 3200-EXIT.
+    ├── EXIT
+    └── .
+  └── PARAGRAPH : 3300-VALIDATE-RECORD.
+    ├── IF : CPYB-REQ-ID = SPACES
+    │   ├── THEN
+    │   │   ├── MOVE : MOVE 'V101' TO CPYB-ERR-CODE
+    │   │   ├── MOVE : MOVE 'REQ ID MISSING IN INPUT FILE' TO CPYB-ERR-MSG
+    │   │   └── SET INVALID-RECORD TO TRUE
+    │   └── ELSE
+    │       └── IF : CPYB-CLIENT-ID = SPACES
+    │           ├── THEN
+    │           │   ├── MOVE : MOVE 'V102' TO CPYB-ERR-CODE
+    │           │   ├── MOVE : MOVE 'CLIENT ID MISSING IN INPUT FILE' TO CPYB-ERR-MSG
+    │           │   └── SET INVALID-RECORD TO TRUE
+    │           └── ELSE
+    │               └── IF : CPYB-ACTION-CODE = 'PY' OR CPYB-ACTION-CODE = 'RF' OR CPYB-ACTION-CODE = 'BL'
+    │                   ├── THEN
+    │                   │   ├── SET VALID-RECORD TO TRUE
+    │                   │   └── SET CPYB-VALIDATION-OK TO TRUE
+    │                   └── ELSE
+    │                       ├── MOVE : MOVE 'V103' TO CPYB-ERR-CODE
+    │                       ├── MOVE : MOVE 'INVALID ACTION CODE IN INPUT FILE' TO CPYB-ERR-MSG
+    │                       └── SET INVALID-RECORD TO TRUE
+    ├── IF : VALID-RECORD
+    │   ├── THEN
+    │   │   └── IF : CPYB-PRIORITY >= 8
+    │   │       ├── THEN
+    │   │       │   └── SET HIGH-PRIORITY TO TRUE
+    │   │       └── ELSE
+    │   │           └── SET NORMAL-PRIORITY TO TRUE
+    └── .
+  └── PARAGRAPH : 3300-EXIT.
+    ├── EXIT
+    └── .
+  └── PARAGRAPH : 3400-DECIDE-ACTION.
+    ├── IF : INVALID-RECORD
+    │   ├── THEN
+    │   │   ├── ADD 1 TO WS-ERROR-NBR
+    │   │   └── SET CALL-NOT-REQUIRED TO TRUE
+    │   └── ELSE
+    │       ├── COMPUTE WS-DEFAULT-FEE = CPYB-AMOUNT * 0.01
+    │       ├── COMPUTE WS-WORK-TOTAL = CPYB-AMOUNT + WS-DEFAULT-FEE
+    │       ├── MOVE : MOVE WS-DEFAULT-FEE TO CPYB-FEE
+    │       ├── MOVE : MOVE WS-WORK-TOTAL TO CPYB-TOTAL
+    │       ├── IF : CPYB-AMOUNT > 5000
+    │       │   ├── THEN
+    │       │   │   └── SET CPYB-HIGH-AMOUNT TO TRUE
+    │       │   └── ELSE
+    │       │       └── SET CPYB-NOT-HIGH-AMOUNT TO TRUE
+    │       ├── IF : CPYB-COUNTRY NOT = 'FRA'
+    │       │   ├── THEN
+    │       │   │   └── SET CPYB-FOREIGN-REQUEST TO TRUE
+    │       │   └── ELSE
+    │       │       └── SET CPYB-DOMESTIC-REQUEST TO TRUE
+    │       └── EVALUATE : CPYB-ACTION-CODE
+    │           ├── WHEN 'PY'
+    │           │   └── IF : CPYB-AMOUNT > 0
+    │           │       ├── THEN
+    │           │       │   └── IF : HIGH-PRIORITY
+    │           │       │       ├── THEN
+    │           │       │       │   ├── SET CALL-REQUIRED TO TRUE
+    │           │       │       │   └── MOVE : MOVE 'PY01' TO CPYB-DECISION-CODE
+    │           │       │       └── ELSE
+    │           │       │           └── IF : CPYB-AMOUNT > 100
+    │           │       │               ├── THEN
+    │           │       │               │   ├── SET CALL-REQUIRED TO TRUE
+    │           │       │               │   └── MOVE : MOVE 'PY02' TO CPYB-DECISION-CODE
+    │           │       │               └── ELSE
+    │           │       │                   ├── SET CALL-NOT-REQUIRED TO TRUE
+    │           │       │                   └── MOVE : MOVE 'PY03' TO CPYB-DECISION-CODE
+    │           │       └── ELSE
+    │           │           ├── SET CALL-NOT-REQUIRED TO TRUE
+    │           │           ├── MOVE : MOVE 'P201' TO CPYB-ERR-CODE
+    │           │           └── MOVE : MOVE 'PAYMENT AMOUNT <= 0' TO CPYB-ERR-MSG
+    │           ├── WHEN 'RF'
+    │           │   └── IF : CPYB-AMOUNT > 0
+    │           │       ├── THEN
+    │           │       │   ├── SET CALL-REQUIRED TO TRUE
+    │           │       │   └── MOVE : MOVE 'RF01' TO CPYB-DECISION-CODE
+    │           │       └── ELSE
+    │           │           ├── SET CALL-NOT-REQUIRED TO TRUE
+    │           │           ├── MOVE : MOVE 'R201' TO CPYB-ERR-CODE
+    │           │           └── MOVE : MOVE 'REFUND AMOUNT <= 0' TO CPYB-ERR-MSG
+    │           ├── WHEN 'BL'
+    │           │   └── IF : CPYB-COUNTRY = 'FRA'
+    │           │       ├── THEN
+    │           │       │   ├── SET CALL-REQUIRED TO TRUE
+    │           │       │   └── MOVE : MOVE 'BL01' TO CPYB-DECISION-CODE
+    │           │       └── ELSE
+    │           │           └── IF : HIGH-PRIORITY
+    │           │               ├── THEN
+    │           │               │   ├── SET CALL-REQUIRED TO TRUE
+    │           │               │   └── MOVE : MOVE 'BL02' TO CPYB-DECISION-CODE
+    │           │               └── ELSE
+    │           │                   ├── SET CALL-NOT-REQUIRED TO TRUE
+    │           │                   ├── MOVE : MOVE 'B201' TO CPYB-ERR-CODE
+    │           │                   └── MOVE : MOVE 'FOREIGN LOW PRIORITY BLOCK IGNORED' TO CPYB-ERR-MSG
+    │           └── WHEN OTHER
+    │               ├── SET CALL-NOT-REQUIRED TO TRUE
+    │               ├── MOVE : MOVE 'X201' TO CPYB-ERR-CODE
+    │               └── MOVE : MOVE 'NO ROUTING RULE FOR ACTION' TO CPYB-ERR-MSG
+    └── .
+  └── PARAGRAPH : 3400-EXIT.
+    ├── EXIT
+    └── .
+  └── PARAGRAPH : 3500-OPTIONAL-CALL.
+    ├── IF : CALL-REQUIRED
+    │   ├── THEN
+    │   │   ├── IF : CPYB-ACTION-CODE = 'PY'
+    │   │   │   ├── THEN
+    │   │   │   │   └── MOVE : MOVE 'PGMA001' TO WS-PGM-NAME
+    │   │   │   └── ELSE
+    │   │   │       └── IF : CPYB-ACTION-CODE = 'RF'
+    │   │   │           ├── THEN
+    │   │   │           │   └── MOVE : MOVE 'PGMA001' TO WS-PGM-NAME
+    │   │   │           └── ELSE
+    │   │   │               └── EVALUATE : TRUE
+    │   │   │                   ├── WHEN HIGH-PRIORITY
+    │   │   │                   │   └── MOVE : MOVE 'PGMA001' TO WS-PGM-NAME
+    │   │   │                   ├── WHEN CPYB-FOREIGN-REQUEST
+    │   │   │                   │   └── MOVE : MOVE 'PGMA001' TO WS-PGM-NAME
+    │   │   │                   └── WHEN OTHER
+    │   │   │                       └── MOVE : MOVE 'PGMA001' TO WS-PGM-NAME
+    │   │   ├── CALL 'ZCALLPGM' USING WS-PGM-NAME CPYB-BATCH-CONTEXT
+    │   │   └── IF : CPYB-PGM-RETURN = '0000'
+    │   │       ├── THEN
+    │   │       │   └── ADD 1 TO WS-PROCESSED-NBR
+    │   │       └── ELSE
+    │   │           └── ADD 1 TO WS-ERROR-NBR
+    │   └── ELSE
+    │       └── CONTINUE
+    └── .
+  └── PARAGRAPH : 3500-EXIT.
+    ├── EXIT
+    └── .
+  └── PARAGRAPH : 9000-END.
+    ├── CLOSE IN-FILE
+    ├── DISPLAY 'LINES READ : ' WS-LINE-NBR
+    ├── DISPLAY 'LINES PROCESSED: ' WS-PROCESSED-NBR
+    ├── DISPLAY 'LINES ERROR : ' WS-ERROR-NBR
+    └── .
+  └── PARAGRAPH : 9000-EXIT.
+    ├── EXIT
+    └── .

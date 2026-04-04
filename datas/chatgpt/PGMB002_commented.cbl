@@ -4,12 +4,17 @@
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
+      * Fichier batch en entrée contenant une demande par ligne.
+      * Le statut fichier est conservé pour permettre un diagnostic simple
+      * en exploitation en cas d'échec d'ouverture ou de lecture.
            SELECT IN-FILE ASSIGN TO 'INPUTB.DAT'
                ORGANIZATION IS LINE SEQUENTIAL
                FILE STATUS IS WS-INFILE-STATUS.
 
        DATA DIVISION.
        FILE SECTION.
+      * Chaque enregistrement est traité comme une ligne fixe de 120 caractères.
+      * Le découpage fonctionnel est réalisé plus bas par positions.
        FD  IN-FILE
            RECORD CONTAINS 120 CHARACTERS
            BLOCK CONTAINS 0 RECORDS.
@@ -17,16 +22,22 @@
 
        WORKING-STORAGE SECTION.
 
+      * Nom du programme cible par défaut. Cette valeur est ensuite écrasée
+      * dynamiquement selon les règles de routage métier.
        77  WS-PGM-NAME                  PIC X(08) VALUE 'PGMA001'.
        77  WS-INFILE-STATUS             PIC XX VALUE SPACES.
+      * Interrupteur de fin de fichier pilotant la boucle principale de lecture.
        77  WS-EOF-SW                    PIC X VALUE 'N'.
            88  EOF-REACHED                    VALUE 'Y'.
            88  EOF-NOT-REACHED                VALUE 'N'.
+      * Compteurs batch pour restitution en fin de traitement.
        77  WS-LINE-NBR                  PIC 9(07) VALUE 0.
        77  WS-PROCESSED-NBR             PIC 9(07) VALUE 0.
        77  WS-ERROR-NBR                 PIC 9(07) VALUE 0.
        77  WS-SUB                       PIC 9(03) VALUE 0.
 
+      * Zone de parsing technique de la ligne d'entrée.
+      * Elle sert d'étape intermédiaire avant alimentation du copy contexte.
        01  WS-PARSE-AREA.
            05  WS-F-REQ-ID              PIC X(12).
            05  WS-F-CLIENT-ID           PIC X(10).
@@ -40,11 +51,15 @@
            05  WS-F-PRODUCT             PIC X(04).
            05  WS-F-FILLER              PIC X(61).
 
+      * Montants de travail utilisés pour les calculs locaux avant copie
+      * dans le contexte transmis au sous-programme appelé.
        01  WS-AMOUNTS.
            05  WS-AMOUNT-N              PIC 9(9)V99 VALUE 0.
            05  WS-DEFAULT-FEE           PIC 9(5)V99 VALUE 0.
            05  WS-WORK-TOTAL            PIC 9(9)V99 VALUE 0.
 
+      * Indicateurs internes du programme.
+      * Les 88 sont utilisés pour rendre les règles de traitement plus lisibles.
        01  WS-FLAGS.
            05  WS-VALID-RECORD          PIC X VALUE 'N'.
                88  VALID-RECORD               VALUE 'Y'.
@@ -56,11 +71,15 @@
                88  HIGH-PRIORITY              VALUE 'Y'.
                88  NORMAL-PRIORITY            VALUE 'N'.
 
+      * Contexte batch partagé avec les sous-programmes métier.
+      * Le copy centralise les données d'entrée, les indicateurs et le retour.
        COPY CPYBATCH.
 
        PROCEDURE DIVISION.
 
        0000-MAIN.
+      * Chaînage standard batch : initialisation, ouverture fichier,
+      * boucle de lecture puis restitution des compteurs de fin.
            PERFORM 1000-INIT THRU 1000-EXIT
            PERFORM 2000-OPEN-FILE THRU 2000-EXIT
 
@@ -74,6 +93,8 @@
 
            PERFORM 9000-END THRU 9000-EXIT
 
+      * Boucle résiduelle probablement laissée pour test ou squelette
+      * d'évolution. Elle n'est normalement jamais atteinte après le GOBACK.
            PERFORM UNTIL FIN
                PERFORM PATATE
            END-PERFORM
@@ -81,6 +102,8 @@
            .
 
        1000-INIT.
+      * Remise à zéro de tous les compteurs et drapeaux avant traitement.
+      * Important pour éviter toute pollution entre deux lancements batch.
            MOVE ZERO                    TO WS-LINE-NBR
                                           WS-PROCESSED-NBR
                                           WS-ERROR-NBR
@@ -98,6 +121,7 @@
            .
 
        2000-OPEN-FILE.
+      * Ouverture du fichier d'entrée en mode INPUT.
            OPEN INPUT IN-FILE
            .
 
@@ -106,6 +130,9 @@
            .
 
        3000-READ-LOOP.
+      * Lecture séquentielle du fichier.
+      * Pour chaque ligne lue : nettoyage, parsing, validation,
+      * décision métier puis éventuel appel d'un programme cible.
            READ IN-FILE
               AT END
                  SET EOF-REACHED TO TRUE
@@ -124,6 +151,9 @@
            .
 
        3100-CLEAR-CONTEXT.
+      * Réinitialisation complète du contexte de travail avant traitement
+      * d'une nouvelle ligne. Cela évite qu'une valeur du record précédent
+      * soit réutilisée par erreur lors d'un rejet ou d'un appel partiel.
            MOVE SPACES TO WS-F-REQ-ID
                           WS-F-CLIENT-ID
                           WS-F-ACCOUNT-ID
@@ -162,6 +192,8 @@
                           WS-DEFAULT-FEE
                           WS-WORK-TOTAL
 
+      * Par défaut, le record est considéré invalide tant que les contrôles
+      * n'ont pas explicitement confirmé le contraire.
            SET CPYB-VALIDATION-KO      TO TRUE
            SET CPYB-SQL-NOT-NEEDED     TO TRUE
            SET CPYB-NOT-HIGH-AMOUNT    TO TRUE
@@ -178,6 +210,8 @@
            .
 
        3200-PARSE-RECORD.
+      * Découpage positionnel de la ligne d'entrée.
+      * Le format attendu est celui du flux amont batch historicisé.
            MOVE IN-REC(1:12)   TO WS-F-REQ-ID
            MOVE IN-REC(13:10)  TO WS-F-CLIENT-ID
            MOVE IN-REC(23:12)  TO WS-F-ACCOUNT-ID
@@ -190,6 +224,8 @@
            MOVE IN-REC(58:4)   TO WS-F-PRODUCT
            MOVE IN-REC(60:61)  TO WS-F-FILLER
 
+      * Alimentation du copy de contexte qui sera transmis aux programmes
+      * métier via l'appel générique ZCALLPGM.
            MOVE WS-F-REQ-ID      TO CPYB-REQ-ID
            MOVE WS-F-CLIENT-ID   TO CPYB-CLIENT-ID
            MOVE WS-F-ACCOUNT-ID  TO CPYB-ACCOUNT-ID
@@ -199,6 +235,9 @@
            MOVE WS-F-CURRENCY    TO CPYB-CURRENCY
            MOVE WS-F-PRODUCT     TO CPYB-PRODUCT
 
+      * Le montant est reçu au format caractère et converti seulement s'il
+      * passe le test NUMERIC. En cas d'anomalie, on laisse la validation
+      * métier décider du rejet final avec message d'erreur positionné.
            IF WS-F-AMOUNT NUMERIC
               MOVE WS-F-AMOUNT TO WS-AMOUNT-N
               MOVE WS-AMOUNT-N TO CPYB-AMOUNT
@@ -207,12 +246,16 @@
               MOVE 'AMOUNT IS NOT NUMERIC' TO CPYB-ERR-MSG
            END-IF
 
+      * La priorité est tolérante : si non numérique, on retombe sur 0.
            IF WS-F-PRIORITY NUMERIC
               MOVE WS-F-PRIORITY TO CPYB-PRIORITY
            ELSE
               MOVE 0 TO CPYB-PRIORITY
            END-IF
 
+      * Métadonnées techniques d'audit et de traçabilité du batch.
+      * Dans une vraie chaîne, ces valeurs seraient souvent alimentées
+      * dynamiquement par le scheduler ou le framework d'exécution.
            MOVE 'BATCHUSR' TO CPYB-CREATED-BY
            MOVE '2026-03-09-12.00.00.000000' TO CPYB-CREATED-TS
            MOVE 'BATCHUSR' TO CPYB-UPDATED-BY
@@ -226,6 +269,8 @@
            .
 
        3300-VALIDATE-RECORD.
+      * Contrôles de présence minimaux sur les identifiants indispensables.
+      * Les codes action autorisés sont limités au périmètre batch courant.
            IF CPYB-REQ-ID = SPACES
               MOVE 'V101' TO CPYB-ERR-CODE
               MOVE 'REQ ID MISSING IN INPUT FILE' TO CPYB-ERR-MSG
@@ -250,6 +295,7 @@
               END-IF
            END-IF
 
+      * Qualification de la priorité pour simplifier les règles de routage.
            IF VALID-RECORD
               IF CPYB-PRIORITY >= 8
                  SET HIGH-PRIORITY TO TRUE
@@ -264,28 +310,36 @@
            .
 
        3400-DECIDE-ACTION.
+      * Si le record est invalide, il est compté en erreur et aucun appel
+      * sous-programme n'est tenté.
            IF INVALID-RECORD
               ADD 1 TO WS-ERROR-NBR
               SET CALL-NOT-REQUIRED TO TRUE
            ELSE
+      * Calcul d'une commission standard puis du total de travail.
+      * La logique reste volontairement simple à ce niveau du batch.
               COMPUTE WS-DEFAULT-FEE = CPYB-AMOUNT * 0.01
               COMPUTE WS-WORK-TOTAL  = CPYB-AMOUNT + WS-DEFAULT-FEE
 
               MOVE WS-DEFAULT-FEE TO CPYB-FEE
               MOVE WS-WORK-TOTAL  TO CPYB-TOTAL
 
+      * Marquage des dossiers à fort montant pour les règles aval.
               IF CPYB-AMOUNT > 5000
                  SET CPYB-HIGH-AMOUNT TO TRUE
               ELSE
                  SET CPYB-NOT-HIGH-AMOUNT TO TRUE
               END-IF
 
+      * Distinction national / étranger utilisée pour le routage métier.
               IF CPYB-COUNTRY NOT = 'FRA'
                  SET CPYB-FOREIGN-REQUEST TO TRUE
               ELSE
                  SET CPYB-DOMESTIC-REQUEST TO TRUE
               END-IF
 
+      * Règles de décision par type d'action.
+      * PY : paiement, RF : remboursement, BL : blocage.
               EVALUATE CPYB-ACTION-CODE
                  WHEN 'PY'
                     IF CPYB-AMOUNT > 0
@@ -318,6 +372,8 @@
                     END-IF
 
                  WHEN 'BL'
+      * Un blocage domestique est toujours routé.
+      * Pour l'étranger, seule une priorité élevée autorise l'appel.
                     IF CPYB-COUNTRY = 'FRA'
                        SET CALL-REQUIRED TO TRUE
                        MOVE 'BL01' TO CPYB-DECISION-CODE
@@ -346,6 +402,9 @@
            .
 
        3500-OPTIONAL-CALL.
+      * Détermination du programme métier destinataire.
+      * Les paiements et remboursements ont un routage direct.
+      * Les blocages passent par une décision complémentaire.
            IF CALL-REQUIRED
               IF CPYB-ACTION-CODE = 'PY'
                  MOVE 'PGMA001' TO WS-PGM-NAME
@@ -364,9 +423,13 @@
                  END-IF
               END-IF
 
+      * Appel générique du sous-programme avec passage du copy contexte.
+      * Le code retour technique applicatif est restitué dans CPYB-PGM-RETURN.
               CALL 'ZCALLPGM' USING WS-PGM-NAME
                                      CPYB-BATCH-CONTEXT
 
+      * Les compteurs batch distinguent les appels traités avec succès
+      * des appels revenus en erreur applicative.
               IF CPYB-PGM-RETURN = '0000'
                  ADD 1 TO WS-PROCESSED-NBR
               ELSE
@@ -382,6 +445,7 @@
            .
 
        9000-END.
+      * Fermeture du fichier puis bilan d'exécution pour exploitation.
            CLOSE IN-FILE
 
            DISPLAY 'LINES READ     : ' WS-LINE-NBR
