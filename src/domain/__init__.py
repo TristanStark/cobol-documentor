@@ -1,4 +1,6 @@
-from automatic_doc.domain.models import (
+from __future__ import annotations
+
+from .models import (
     CobolRoutine,
     CobolVariable,
     Condition88,
@@ -11,13 +13,13 @@ from automatic_doc.domain.models import (
 )
 
 __all__ = [
-    'CobolRoutine',
-    'CobolVariable',
-    'Condition88',
-    'ConfidenceLevel',
-    'MeaningEvidence',
-    'NearbyComment',
-    'VariableDescription',
-    'VariableDocumentation',
-    'VariableUsage',
+    "CobolRoutine",
+    "CobolVariable",
+    "Condition88",
+    "ConfidenceLevel",
+    "MeaningEvidence",
+    "NearbyComment",
+    "VariableDescription",
+    "VariableDocumentation",
+    "VariableUsage",
 ]

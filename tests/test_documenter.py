@@ -1,5 +1,13 @@
-from automatic_doc.domain.models import CobolVariable, Condition88, NearbyComment, VariableUsage
-from automatic_doc.pipeline.documenter import AutomaticDocumenter
+from __future__ import annotations
+
+from src.domain.models import (
+    CobolVariable,
+    Condition88,
+    ConfidenceLevel,
+    NearbyComment,
+    VariableUsage,
+)
+from src.pipeline.documenter import AutomaticDocumenter
 
 
 def test_documenter_generates_customer_status_doc() -> None:
@@ -38,9 +46,33 @@ def test_documenter_generates_customer_status_doc() -> None:
         )
     ]
 
-    docs = AutomaticDocumenter().document_variables([variable], usages=usages, comments=comments)
-    doc = docs[0]
+    doc = AutomaticDocumenter().document_variables(
+        [variable],
+        usages=usages,
+        comments=comments,
+    )[0]
 
-    assert doc.confidence_score >= 0.70
+    assert doc.normalized_tokens == ["customer", "status"]
     assert "status" in doc.semantic_tags
+    assert "domain_customer" in doc.semantic_tags
+    assert doc.description.technical.startswith("Declared as PIC X(01)")
     assert "customer" in doc.description.business.lower()
+    assert doc.confidence_level == ConfidenceLevel.HIGH
+    assert any(e.source == "usage" for e in doc.evidence)
+
+
+def test_documenter_penalizes_commented_out_code() -> None:
+    variable = CobolVariable(name="WS-RESULT", level=5)
+    comment = NearbyComment(
+        variable_name="WS-RESULT",
+        text="* MOVE WS-RESULT TO WS-OUT.",
+        distance=2,
+        position="before",
+    )
+
+    doc = AutomaticDocumenter().document_variables(
+        [variable],
+        comments=[comment],
+    )[0]
+
+    assert any(e.label == "commented_code_penalty" for e in doc.evidence)
