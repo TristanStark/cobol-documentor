@@ -1,34 +1,37 @@
-from ast import List
+from __future__ import annotations
+
 from src.var import Variable, ZoneGroup
+
 
 class MemoryStack:
     def __init__(self):
-        self.stack: List[Variable] = []
+        self.stack: list[Variable] = []
         self._length = 0
-        self.known_variables = []
+        self.known_variables: list[str] = []
         # Liste des opérations effectuées sur la pile de variables, pour le debug
-        self.operation_history = []
+        self.operation_history: list[str] = []
 
     def compute(self) -> None:
         """
         Récupère le nom de chacune des variables connues dans la
-         pile de variables, y compris les définitions 
-         (pour les variables de niveau 88) et les variables imbriquées 
-         (pour les zones groupées), 
+         pile de variables, y compris les définitions
+         (pour les variables de niveau 88) et les variables imbriquées
+         (pour les zones groupées),
          et les stocke dans la liste self.known_variables.
          Cette liste est utilisée pour vérifier l'existence d'une variable
          (lookup_table)
-         """
+        """
+        self.known_variables = []
         for var in self.stack:
             self.known_variables.extend(var.get_known_values())
 
     def length(self) -> int:
         """
-        Calcule la longueur totale de la pile de variables, 
+        Calcule la longueur totale de la pile de variables,
         en sommant la longueur de chaque variable dans la pile.
-         La longueur d'une variable est calculée en comptant 1 pour 
-         elle-même, plus celle de ses définitions 
-         (pour les variables de niveau 88) et de ses variables imbriquées (pour les zones groupées).
+         La longueur d'une variable est calculée en comptant 1 pour
+         elle-même, plus celle de ses définitions
+         (pour les variables de niveau 88) et les variables imbriquées (pour les zones groupées).
          Renvoie la longueur totale de la pile de variables.
         """
         if self._length != 0:
@@ -36,7 +39,7 @@ class MemoryStack:
         for var in self.stack:
             self._length += var.length()
         return self._length
-    
+
     def __str__(self):
         s = ""
         for var in self.stack:
@@ -55,21 +58,21 @@ class MemoryStack:
         Recherche la valeur d'une variable dans la pile de variables, en commençant par les variables les plus récentes (en haut de la pile).
         Si la variable est trouvée, sa valeur est retournée. Sinon, None est retourné.
         """
-        if not self.does_variable_exist:
+        if not self.does_variable_exist(var_name):
             raise ValueError(f"Variable '{var_name}' not found in stack. Cannot get value.")
         for var in self.stack:
             value = var.get_value(var_name)
             if value is not None:
                 return value
         return None
-    
+
     def set_value(self, var_name: str, value):
         """
         Met à jour la valeur d'une variable dans la pile de variables. Si la variable existe déjà, sa valeur est mise à jour. Sinon, une nouvelle variable est créée et ajoutée à la pile.
         """
         self.operation_history.append(f"SET_VALUE: {var_name} = {value}")
-        if not self.does_variable_exist:
-            raise ValueError(f"Variable '{var_name}' not found in stack. Cannot get value.")
+        if not self.does_variable_exist(var_name):
+            raise ValueError(f"Variable '{var_name}' not found in stack. Cannot set value '{value}'.")
         for var in self.stack:
             returned_value = var.set_value(var_name, value)
             if returned_value is not None:
@@ -89,19 +92,21 @@ class MemoryStack:
             level = Variable.get_level(line)
             if level == 0:
                 continue
+
+            parsed_variable = Variable(line)
+            parsed_variable.init()
+
             if level == 88:
                 if last_variable is None:
                     raise ValueError(f"Variable with level 88 found without a parent variable: '{line}'")
-                v = Variable(line)
-                v.init()
-                last_variable.definitions.append(v)
+                last_variable.definitions.append(parsed_variable)
                 continue
 
-            if Variable.is_zone_groupe(line):
+            if parsed_variable.is_group:
                 v: Variable = ZoneGroup(line)
+                v.init()
             else:
-                v = Variable(line)
-            v.init()
+                v = parsed_variable
 
             while group_stack and group_stack[-1][0] >= level:
                 group_stack.pop()
@@ -119,4 +124,3 @@ class MemoryStack:
         memory.stack = memory_stack
         memory.compute()
         return memory
-
