@@ -17,6 +17,7 @@ COBOL source
   -> DATA DIVISION variable parser
   -> PROCEDURE DIVISION paragraph/statement loader
   -> Graphify JSON export
+  -> optional standalone HTML/SVG graph export
 ```
 
 ## Supported COBOL features in this rewrite
@@ -34,6 +35,7 @@ COBOL source
 - `OCCURS`, including `OCCURS n TO m TIMES DEPENDING ON var`.
 - Statement classification for `CALL`, `PERFORM`, `READ`, `WRITE`, `REWRITE`, `MOVE`, `SET`, `IF`, `EVALUATE`, etc.
 - Graphify export with nodes/edges.
+- Simple standalone HTML graph export using static SVG only.
 
 ## CLI usage
 
@@ -45,6 +47,12 @@ With copybooks:
 
 ```bash
 dotnet run --project src/CobolDocumentor.Cli -- path/to/program.cbl --copy-root path/to/copybooks --graphify-out out/graphify.json
+```
+
+With a standalone HTML graph:
+
+```bash
+dotnet run --project src/CobolDocumentor.Cli -- path/to/program.cbl --graphify-out out/graphify.json --html-out out/graph.html
 ```
 
 ## Tests
