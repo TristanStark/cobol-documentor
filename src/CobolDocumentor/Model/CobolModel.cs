@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace CobolDocumentor.Model;
 
 /// <summary>Represents a parsed COBOL program.</summary>
@@ -96,7 +94,18 @@ public sealed class CobolStatement
     public List<CobolStatement> ElseChildren { get; } = [];
 
     /// <summary>True when the statement is a CALL 'ZCALLPGM'.</summary>
-    public bool IsZCallPgm => Regex.IsMatch(RawText, "^CALL\\s+['\"]?ZCALLPGM['\"]?", RegexOptions.IgnoreCase);
+    public bool IsZCallPgm
+    {
+        get
+        {
+            var tokens = RawText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return tokens.Length >= 2
+                && tokens[0].Equals("CALL", StringComparison.OrdinalIgnoreCase)
+                && CleanToken(tokens[1]).Equals("ZCALLPGM", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private static string CleanToken(string token) => token.Trim().TrimEnd('.').Trim('"', '\'');
 }
 
 /// <summary>Represents DATA DIVISION declarations and lookup tables.</summary>
@@ -276,9 +285,47 @@ public sealed class CobolVariable
 
     private static IEnumerable<string> Tokenize(string text)
     {
-        foreach (Match match in Regex.Matches(text.Trim().TrimEnd('.'), "'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|\\S+"))
+        var source = text.Trim().TrimEnd('.');
+        var current = new List<char>();
+        char? quote = null;
+
+        foreach (var character in source)
         {
-            yield return match.Value;
+            if (quote is not null)
+            {
+                current.Add(character);
+                if (character == quote)
+                {
+                    quote = null;
+                }
+
+                continue;
+            }
+
+            if (character is '\'' or '"')
+            {
+                quote = character;
+                current.Add(character);
+                continue;
+            }
+
+            if (char.IsWhiteSpace(character))
+            {
+                if (current.Count > 0)
+                {
+                    yield return new string(current.ToArray());
+                    current.Clear();
+                }
+
+                continue;
+            }
+
+            current.Add(character);
+        }
+
+        if (current.Count > 0)
+        {
+            yield return new string(current.ToArray());
         }
     }
 
