@@ -29,15 +29,13 @@ public sealed class CobolProgramModel
 public sealed class CobolParagraph
 {
     /// <summary>Creates a paragraph.</summary>
-    public CobolParagraph(string name) => Name = CleanLabel(name);
+    public CobolParagraph(string name) => Name = name.Trim().TrimEnd('.');
 
     /// <summary>Paragraph name.</summary>
     public string Name { get; }
 
     /// <summary>Statements contained in the paragraph.</summary>
     public List<CobolStatement> Statements { get; } = [];
-
-    private static string CleanLabel(string value) => value.Trim().TrimEnd('.');
 }
 
 /// <summary>Supported statement categories for documentation and graph export.</summary>
@@ -151,19 +149,15 @@ public sealed class CobolMemoryStack
             }
 
             lastVariable = variable;
-
             if (variable.IsGroup)
             {
                 groupStack.Push((variable.Level, variable));
             }
         }
 
-        foreach (var variable in memory.Variables)
+        foreach (var knownName in memory.Variables.SelectMany(variable => variable.GetKnownNames()))
         {
-            foreach (var knownName in variable.GetKnownNames())
-            {
-                memory.KnownVariables.Add(knownName);
-            }
+            memory.KnownVariables.Add(knownName);
         }
 
         return memory;
@@ -244,7 +238,8 @@ public sealed class CobolVariable
             return null;
         }
 
-        var variable = new CobolVariable
+        var occurs = ExtractOccurs(tokens);
+        return new CobolVariable
         {
             RawText = declaration.Trim(),
             Level = level,
@@ -253,11 +248,12 @@ public sealed class CobolVariable
             Picture = ExtractClause(tokens, "PIC", "PICTURE"),
             Usage = ExtractUsage(tokens),
             Value = ExtractClause(tokens, "VALUE", "VALUES"),
-            IndexedBy = ExtractIndexedBy(tokens)
+            IndexedBy = ExtractIndexedBy(tokens),
+            Occurs = occurs.Raw,
+            OccursMin = occurs.Min,
+            OccursMax = occurs.Max,
+            DependsOn = occurs.DependsOn
         };
-
-        var occurs = ExtractOccurs(tokens);
-        return variable with { Occurs = occurs.Raw, OccursMin = occurs.Min, OccursMax = occurs.Max, DependsOn = occurs.DependsOn };
     }
 
     /// <summary>Returns every known name below this declaration.</summary>
@@ -280,8 +276,7 @@ public sealed class CobolVariable
 
     private static IEnumerable<string> Tokenize(string text)
     {
-        var cleaned = text.Trim().TrimEnd('.');
-        foreach (Match match in Regex.Matches(cleaned, "'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|\\S+"))
+        foreach (Match match in Regex.Matches(text.Trim().TrimEnd('.'), "'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|\\S+"))
         {
             yield return match.Value;
         }
@@ -339,12 +334,9 @@ public sealed class CobolVariable
     private static string? ExtractUsage(IReadOnlyList<string> tokens)
     {
         var explicitUsage = ExtractClause(tokens, "USAGE");
-        if (!string.IsNullOrWhiteSpace(explicitUsage))
-        {
-            return explicitUsage;
-        }
-
-        return tokens.Skip(2).FirstOrDefault(UsageKeywords.Contains);
+        return !string.IsNullOrWhiteSpace(explicitUsage)
+            ? explicitUsage
+            : tokens.Skip(2).FirstOrDefault(UsageKeywords.Contains);
     }
 
     private static List<string> ExtractIndexedBy(IReadOnlyList<string> tokens)
@@ -389,8 +381,8 @@ public sealed class CobolVariable
             raw.Add(tokens[i]);
         }
 
-        int.TryParse(tokens[index + 1], out var min);
-        int? max = min == 0 ? null : min;
+        var min = int.TryParse(tokens[index + 1], out var parsedMin) ? parsedMin : (int?)null;
+        int? max = min;
         if (index + 3 < tokens.Count && tokens[index + 2].Equals("TO", StringComparison.OrdinalIgnoreCase) && int.TryParse(tokens[index + 3], out var parsedMax))
         {
             max = parsedMax;
@@ -406,6 +398,6 @@ public sealed class CobolVariable
             }
         }
 
-        return (string.Join(' ', raw), min == 0 ? null : min, max, dependsOn);
+        return (string.Join(' ', raw), min, max, dependsOn);
     }
 }
