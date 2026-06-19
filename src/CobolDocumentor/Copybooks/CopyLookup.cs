@@ -1,11 +1,12 @@
 using System.Text.RegularExpressions;
+using CobolDocumentor.Preprocessing;
 
 namespace CobolDocumentor.Copybooks;
 
 /// <summary>Indexes COBOL copybooks and resolves COPY names to files.</summary>
 public sealed class CopyLookup
 {
-    private static readonly HashSet<string> ValidExtensions = new(StringComparer.OrdinalIgnoreCase) { ".cpy", ".cpm", ".cpx" };
+    private static readonly HashSet<string> ValidExtensions = new(StringComparer.OrdinalIgnoreCase) { ".cpy", ".cpm", ".cpx", ".copy" };
     private readonly Dictionary<string, string> _index = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Creates an empty lookup.</summary>
@@ -19,7 +20,7 @@ public sealed class CopyLookup
     /// <summary>Current immutable index snapshot.</summary>
     public IReadOnlyDictionary<string, string> Index => _index;
 
-    /// <summary>Builds the lookup index from all supported copybook files below a folder.</summary>
+    /// <summary>Builds the lookup index from all supported copybook files below a folder recursively.</summary>
     public void BuildIndex(string rootFolder)
     {
         if (!Directory.Exists(rootFolder))
@@ -48,7 +49,7 @@ public sealed class CopyLookup
     /// <summary>Resolves a COPY name to a file path.</summary>
     public string Resolve(string copyName)
     {
-        var normalized = copyName.Trim().Trim('"', '\'').ToUpperInvariant();
+        var normalized = copyName.Trim().Trim('"', '\'', '.').ToUpperInvariant();
         if (_index.TryGetValue(normalized, out var path))
         {
             return path;
@@ -61,6 +62,7 @@ public sealed class CopyLookup
 /// <summary>Expands COPY statements using a <see cref="CopyLookup" />.</summary>
 public sealed class CopyResolver
 {
+    private const int MaxCopyDepth = 32;
     private readonly CopyLookup? _lookup;
 
     /// <summary>Creates a resolver. Without lookup, COPY statements are preserved.</summary>
@@ -74,21 +76,29 @@ public sealed class CopyResolver
     }
 
     /// <summary>Expands COPY statements in physical source lines.</summary>
-    public IReadOnlyList<string> ExpandLines(IReadOnlyList<string> lines)
+    public IReadOnlyList<string> ExpandLines(IReadOnlyList<string> lines) => ExpandLines(lines, 0);
+
+    private IReadOnlyList<string> ExpandLines(IReadOnlyList<string> lines, int depth)
     {
+        if (depth > MaxCopyDepth)
+        {
+            throw new InvalidOperationException("Maximum nested COPY expansion depth reached.");
+        }
+
         var output = new List<string>();
         var buffer = new List<string>();
         var inCopy = false;
 
         foreach (var line in lines)
         {
-            if (!inCopy && Regex.IsMatch(line, "^\\s*COPY\\b", RegexOptions.IgnoreCase))
+            var normalized = CobolCondenser.StripSequenceArea(line).TrimStart();
+            if (!inCopy && normalized.StartsWith("COPY ", StringComparison.OrdinalIgnoreCase))
             {
                 inCopy = true;
                 buffer.Add(line);
                 if (line.Contains('.'))
                 {
-                    FlushCopy(output, buffer);
+                    FlushCopy(output, buffer, depth);
                     inCopy = false;
                 }
 
@@ -100,7 +110,7 @@ public sealed class CopyResolver
                 buffer.Add(line);
                 if (line.Contains('.'))
                 {
-                    FlushCopy(output, buffer);
+                    FlushCopy(output, buffer, depth);
                     inCopy = false;
                 }
 
@@ -118,7 +128,7 @@ public sealed class CopyResolver
         return output;
     }
 
-    private void FlushCopy(List<string> output, List<string> buffer)
+    private void FlushCopy(List<string> output, List<string> buffer, int depth)
     {
         if (_lookup is null)
         {
@@ -127,7 +137,7 @@ public sealed class CopyResolver
             return;
         }
 
-        var statement = string.Concat(buffer.Where(line => !IsCommentLine(line)));
+        var statement = string.Concat(buffer.Where(line => !IsCommentLine(line)).Select(CobolCondenser.StripSequenceArea));
         var parsed = ParseCopyStatement(statement);
         var copyPath = _lookup.Resolve(parsed.CopyName);
         var content = File.ReadAllText(copyPath);
@@ -138,7 +148,8 @@ public sealed class CopyResolver
                 : Regex.Replace(content, $"(?<![A-Za-z0-9-]){Regex.Escape(replacement.OldValue)}(?![A-Za-z0-9-])", replacement.NewValue);
         }
 
-        output.AddRange(content.SplitLines(keepEnds: true));
+        var expanded = ExpandLines(content.SplitLines(keepEnds: true).ToArray(), depth + 1);
+        output.AddRange(expanded);
         buffer.Clear();
     }
 
