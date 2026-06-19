@@ -1,11 +1,24 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
+# .NET build outputs
+bin/
+obj/
+publish/
+artifacts/
 dist/
-wheels/
-*.egg-info
+TestResults/
+*.user
+*.suo
+*.rsuser
+*.nupkg
+*.snupkg
 
-# Virtual environments
-.venv
-main.zip
+# IDE files
+.vs/
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated archives
+*.zip
