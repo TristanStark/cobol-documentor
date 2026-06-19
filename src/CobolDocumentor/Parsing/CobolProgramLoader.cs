@@ -1,4 +1,5 @@
 using CobolDocumentor.Copybooks;
+using CobolDocumentor.Discovery;
 using CobolDocumentor.Model;
 using CobolDocumentor.Preprocessing;
 
@@ -20,9 +21,11 @@ public sealed class CobolProgramLoader
             throw new FileNotFoundException(sourceFile);
         }
 
+        var sourceText = File.ReadAllText(sourceFile);
+        var programName = CobolProgramDiscovery.ExtractProgramId(sourceText) ?? Path.GetFileNameWithoutExtension(sourceFile).ToUpperInvariant();
         var expandedLines = _copyResolver.ExpandFile(sourceFile);
         var statements = CobolCondenser.CondenseLines(expandedLines);
-        var program = new CobolProgramModel(Path.GetFileNameWithoutExtension(sourceFile).ToUpperInvariant(), sourceFile);
+        var program = new CobolProgramModel(programName, sourceFile);
 
         var dataDeclarations = new List<string>();
         CobolParagraph? currentParagraph = null;
