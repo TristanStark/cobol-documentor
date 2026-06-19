@@ -129,7 +129,7 @@ public sealed class CobolProgramLoader
     private static bool LooksLikeParagraphLabel(string statement)
     {
         var trimmed = statement.Trim();
-        if (!trimmed.EndsWith('.', StringComparison.Ordinal) || trimmed[..^1].Contains(' '))
+        if (!trimmed.EndsWith(".", StringComparison.Ordinal) || trimmed[..^1].Contains(' '))
         {
             return false;
         }
