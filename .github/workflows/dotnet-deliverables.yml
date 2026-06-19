@@ -34,7 +34,18 @@ jobs:
         run: dotnet restore CobolDocumentor.CSharp.sln
 
       - name: Build
-        run: dotnet build CobolDocumentor.CSharp.sln --configuration Release --no-restore
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet build CobolDocumentor.CSharp.sln --configuration Release --no-restore 2>&1 | tee build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Test
         run: dotnet test CobolDocumentor.CSharp.sln --configuration Release --no-build --logger trx --results-directory TestResults
