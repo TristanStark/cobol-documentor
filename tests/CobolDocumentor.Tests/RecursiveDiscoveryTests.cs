@@ -31,9 +31,9 @@ public sealed class RecursiveDiscoveryTests
             var discovered = CobolProgramDiscovery.DiscoverProgramFiles(root);
 
             Assert.Equal(2, discovered.Count);
-            Assert.Contains(discovered, program => program.ProgramId == "MAINPGM");
-            Assert.Contains(discovered, program => program.ProgramId == "OTHERPGM");
-            Assert.DoesNotContain(discovered, program => program.SourceFile.EndsWith("COMMON.cpy", StringComparison.OrdinalIgnoreCase));
+            Assert.True(discovered.Any(program => program.ProgramId == "MAINPGM"));
+            Assert.True(discovered.Any(program => program.ProgramId == "OTHERPGM"));
+            Assert.False(discovered.Any(program => program.SourceFile.EndsWith("COMMON.cpy", StringComparison.OrdinalIgnoreCase)));
         }
         finally
         {
