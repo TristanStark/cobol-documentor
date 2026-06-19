@@ -7,17 +7,23 @@ public static class CobolProgramDiscovery
 {
     private static readonly HashSet<string> ProgramExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".cbl", ".cob", ".cobol", ".pgm", ".pco"
+        ".cbl", ".cob", ".cobol", ".pgm", ".pco", ".sqb"
     };
 
     private static readonly HashSet<string> CopyExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".cpy", ".cpm", ".cpx"
+        ".cpy", ".cpm", ".cpx", ".copy"
     };
 
     /// <summary>Recursively discovers COBOL program files below <paramref name="rootFolder" />.</summary>
     public static IReadOnlyList<DiscoveredCobolProgram> DiscoverProgramFiles(string rootFolder)
     {
+        if (File.Exists(rootFolder))
+        {
+            var descriptor = CreateDescriptor(rootFolder);
+            return descriptor is null ? [] : [descriptor];
+        }
+
         if (!Directory.Exists(rootFolder))
         {
             throw new DirectoryNotFoundException(rootFolder);
@@ -53,6 +59,11 @@ public static class CobolProgramDiscovery
 
     private static DiscoveredCobolProgram? CreateDescriptor(string filePath)
     {
+        if (!IsProgramCandidate(filePath))
+        {
+            return null;
+        }
+
         var text = File.ReadAllText(filePath);
         var hasProgramMarker = text.Contains("PROGRAM-ID", StringComparison.OrdinalIgnoreCase)
             || text.Contains("PROCEDURE DIVISION", StringComparison.OrdinalIgnoreCase);
