@@ -94,7 +94,7 @@ jobs:
       - name: Add documentation to deliverable
         shell: bash
         run: |
-          cp README_CSHARP.md publish/${{ matrix.runtime }}/README_CSHARP.md
+          cp README.md publish/${{ matrix.runtime }}/README.md
           cp CobolDocumentor.CSharp.sln publish/${{ matrix.runtime }}/CobolDocumentor.CSharp.sln
 
       - name: Create ZIP deliverable
