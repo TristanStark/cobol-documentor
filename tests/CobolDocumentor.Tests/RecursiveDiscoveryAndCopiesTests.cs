@@ -34,9 +34,9 @@ public sealed class RecursiveDiscoveryAndCopiesTests : IDisposable
     [Fact]
     public void LoaderExpandsNestedCopiesAndPreservesRedefines()
     {
-        Write("copies/BASECPY.cpy", "       01 :PREFIX:-AREA.\n       COPY NESTEDCPY REPLACING ==:PREFIX:== BY ==:PREFIX:==.\n");
-        Write("copies/NESTEDCPY.cpy", "          05 :PREFIX:-COUNT PIC 9(02).\n          05 :PREFIX:-BASE PIC X(02).\n          05 :PREFIX:-ALT REDEFINES :PREFIX:-BASE PIC X(02).\n");
-        var programFile = Write("programs/sub/realpgm.cbl", "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. REALPGM.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n000100 COPY BASECPY REPLACING ==:PREFIX:== BY ==WS==.\n       PROCEDURE DIVISION.\n       0000-MAIN.\n           MOVE WS-ALT TO WS-COUNT.\n           GOBACK.\n");
+        Write("copies/BASECPY.cpy", "       01 WS-AREA.\n       COPY NESTEDCPY.\n");
+        Write("copies/NESTEDCPY.cpy", "          05 WS-COUNT PIC 9(02).\n          05 WS-BASE PIC X(02).\n          05 WS-ALT REDEFINES WS-BASE PIC X(02).\n");
+        var programFile = Write("programs/sub/realpgm.cbl", "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. REALPGM.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n000100 COPY BASECPY.\n       PROCEDURE DIVISION.\n       0000-MAIN.\n           MOVE WS-ALT TO WS-COUNT.\n           GOBACK.\n");
 
         var loader = new CobolProgramLoader(new CopyResolver(new CopyLookup(_root)));
         var program = loader.Load(programFile);
