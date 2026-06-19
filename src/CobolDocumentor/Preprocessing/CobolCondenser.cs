@@ -81,7 +81,7 @@ public static class CobolCondenser
                     : current.TrimEnd() + " " + normalized.TrimStart();
             }
 
-            if (current.TrimEnd().EndsWith('.', StringComparison.Ordinal))
+            if (current.TrimEnd().EndsWith(".", StringComparison.Ordinal))
             {
                 FlushCurrent(statements, ref current);
             }
@@ -130,7 +130,7 @@ public static class CobolCondenser
             return true;
         }
 
-        return stripped.EndsWith('.', StringComparison.Ordinal) && !stripped[..^1].Contains(' ') && !CobolVerbs.Contains(stripped.TrimEnd('.'));
+        return stripped.EndsWith(".", StringComparison.Ordinal) && !stripped[..^1].Contains(' ') && !CobolVerbs.Contains(stripped.TrimEnd('.'));
     }
 
     private static string FirstToken(string line)
