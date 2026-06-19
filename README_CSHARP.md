@@ -14,7 +14,7 @@ This branch contains an autonomous .NET 8 rewrite of the COBOL documentor pipeli
 COBOL source or source folder
   -> recursive program discovery
   -> recursive COPY index
-  -> COPY expansion
+  -> recursive COPY expansion
   -> fixed-format condenser
   -> DATA DIVISION variable parser
   -> PROCEDURE DIVISION paragraph/statement loader
@@ -25,15 +25,17 @@ COBOL source or source folder
 ## Supported COBOL features in this rewrite
 
 - Recursive program discovery in folders and subfolders.
-- Program file detection for `.cbl`, `.cob`, `.cobol`, `.pgm`, `.pco`.
-- Copybook exclusion for `.cpy`, `.cpm`, `.cpx`.
+- Program file detection for `.cbl`, `.cob`, `.cobol`, `.pgm`, `.pco`, `.sqb`.
+- Copybook exclusion for `.cpy`, `.cpm`, `.cpx`, `.copy`.
+- PROGRAM-ID extraction, with file-name fallback.
 - Fixed-format sequence area stripping.
 - Fixed-format comments/debug lines.
 - Logical statement condensation.
 - Multi-target `MOVE A TO B C` expansion.
 - Multi-target `SET A B TO TRUE` expansion.
-- Recursive copybook index over `.cpy`, `.cpm`, `.cpx`.
-- Basic `COPY ... REPLACING ...` support.
+- Recursive copybook index over `.cpy`, `.cpm`, `.cpx`, `.copy`.
+- Recursive `COPY` expansion with max-depth guard.
+- Basic `COPY ... REPLACING ...` support, including fixed-format COPY lines.
 - DATA DIVISION groups.
 - Level-88 conditions.
 - `REDEFINES`.
