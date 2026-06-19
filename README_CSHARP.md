@@ -11,7 +11,9 @@ This branch contains an autonomous .NET 8 rewrite of the COBOL documentor pipeli
 ## Implemented pipeline
 
 ```text
-COBOL source
+COBOL source or source folder
+  -> recursive program discovery
+  -> recursive COPY index
   -> COPY expansion
   -> fixed-format condenser
   -> DATA DIVISION variable parser
@@ -22,12 +24,15 @@ COBOL source
 
 ## Supported COBOL features in this rewrite
 
+- Recursive program discovery in folders and subfolders.
+- Program file detection for `.cbl`, `.cob`, `.cobol`, `.pgm`, `.pco`.
+- Copybook exclusion for `.cpy`, `.cpm`, `.cpx`.
 - Fixed-format sequence area stripping.
 - Fixed-format comments/debug lines.
 - Logical statement condensation.
 - Multi-target `MOVE A TO B C` expansion.
 - Multi-target `SET A B TO TRUE` expansion.
-- Copybook index over `.cpy`, `.cpm`, `.cpx`.
+- Recursive copybook index over `.cpy`, `.cpm`, `.cpx`.
 - Basic `COPY ... REPLACING ...` support.
 - DATA DIVISION groups.
 - Level-88 conditions.
@@ -39,17 +44,25 @@ COBOL source
 
 ## CLI usage
 
+Single program:
+
 ```bash
 dotnet run --project src/CobolDocumentor.Cli -- path/to/program.cbl --graphify-out out/graphify.json
 ```
 
-With copybooks:
+Single program with copybooks:
 
 ```bash
 dotnet run --project src/CobolDocumentor.Cli -- path/to/program.cbl --copy-root path/to/copybooks --graphify-out out/graphify.json
 ```
 
-With a standalone HTML graph:
+Folder mode, with recursive program discovery and recursive copybook lookup:
+
+```bash
+dotnet run --project src/CobolDocumentor.Cli -- path/to/source-root --out-dir out/json --html-out out/html
+```
+
+With a standalone HTML graph for one program:
 
 ```bash
 dotnet run --project src/CobolDocumentor.Cli -- path/to/program.cbl --graphify-out out/graphify.json --html-out out/graph.html
