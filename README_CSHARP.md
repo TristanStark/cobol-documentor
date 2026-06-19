@@ -76,6 +76,26 @@ dotnet run --project src/CobolDocumentor.Cli -- path/to/program.cbl --graphify-o
 dotnet test CobolDocumentor.CSharp.sln
 ```
 
+## CI and deliverables
+
+The workflow `.github/workflows/dotnet-deliverables.yml` runs on pull requests, matching tags, and manual dispatch.
+
+For pull requests, it:
+
+- restores, builds, and tests the C# solution;
+- uploads xUnit/TRX test results;
+- publishes self-contained CLI deliverables for `linux-x64` and `win-x64`;
+- uploads the ZIP deliverables as workflow artifacts.
+
+For tags matching `v*` or `release-*`, it also creates or updates a GitHub Release and attaches the generated ZIP files.
+
+Generated deliverables are named like:
+
+```text
+CobolDocumentor-v1.0.0-linux-x64.zip
+CobolDocumentor-v1.0.0-win-x64.zip
+```
+
 ## Notes
 
 The Python implementation is still present on this branch so the rewrite can be compared safely. The C# projects are autonomous and can become the main implementation once validated against real COBOL samples.
