@@ -41,13 +41,12 @@ public sealed class RecursiveDiscoveryAndCopiesTests : IDisposable
         var loader = new CobolProgramLoader(new CopyResolver(new CopyLookup(_root)));
         var program = loader.Load(programFile);
         var graph = GraphifyExporter.Export(program);
-        var edges = graph.Edges.Select(edge => (Source: edge["source"]?.ToString(), Target: edge["target"]?.ToString(), Relation: edge["relation"]?.ToString())).ToHashSet();
 
         Assert.Equal("REALPGM", program.Name);
         Assert.True(program.MemoryStack.Contains("WS-ALT"));
         Assert.True(program.MemoryStack.Contains("WS-COUNT"));
-        Assert.Contains(edges, edge => edge.Source == "variable:ws-alt" && edge.Target == "variable:ws-base" && edge.Relation == "redefines");
-        Assert.Contains(edges, edge => edge.Target == "variable:ws-alt" && edge.Relation == "references");
+        Assert.True(graph.Edges.Any(edge => edge["source"]?.ToString() == "variable:ws-alt" && edge["target"]?.ToString() == "variable:ws-base" && edge["relation"]?.ToString() == "redefines"));
+        Assert.True(graph.Edges.Any(edge => edge["target"]?.ToString() == "variable:ws-alt" && edge["relation"]?.ToString() == "references"));
     }
 
     public void Dispose()
