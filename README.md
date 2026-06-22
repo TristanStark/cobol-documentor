@@ -72,7 +72,7 @@ With a standalone HTML graph for one program:
 dotnet run --project src/CobolDocumentor.Cli -- path/to/program.cbl --graphify-out out/graphify.json --html-out out/graph.html
 ```
 
-## Build and test
+## Build and test from source
 
 ```bash
 dotnet restore CobolDocumentor.CSharp.sln
@@ -80,22 +80,67 @@ dotnet build CobolDocumentor.CSharp.sln --configuration Release
 dotnet test CobolDocumentor.CSharp.sln --configuration Release
 ```
 
-## CI and deliverables
+## Local binary builds
 
-The workflow `.github/workflows/dotnet-deliverables.yml` runs on pull requests, matching tags, and manual dispatch.
+Windows self-contained build:
+
+```bash
+dotnet publish src/CobolDocumentor.Cli/CobolDocumentor.Cli.csproj \
+  --configuration Release \
+  --runtime win-x64 \
+  --self-contained true \
+  -p:PublishSingleFile=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  --output publish/win-x64
+```
+
+Linux self-contained build:
+
+```bash
+dotnet publish src/CobolDocumentor.Cli/CobolDocumentor.Cli.csproj \
+  --configuration Release \
+  --runtime linux-x64 \
+  --self-contained true \
+  -p:PublishSingleFile=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  --output publish/linux-x64
+```
+
+## CI, compiled artifacts, and releases
+
+The workflow `.github/workflows/dotnet-deliverables.yml` runs on:
+
+- pull requests targeting `master`, `main`, or `feature/**`;
+- pushed tags matching `v*` or `release-*`;
+- published GitHub Releases;
+- manual dispatch.
 
 For pull requests, it:
 
 - restores, builds, and tests the C# solution;
-- uploads xUnit/TRX test results;
-- publishes self-contained CLI deliverables for `linux-x64` and `win-x64`;
-- uploads the ZIP deliverables as workflow artifacts.
+- uploads the build log and xUnit/TRX test results;
+- publishes self-contained CLI builds for `linux-x64` and `win-x64`;
+- uploads the compiled ZIP builds as workflow artifacts.
 
-For tags matching `v*` or `release-*`, it also creates or updates a GitHub Release and attaches the generated ZIP files.
+For tags matching `v*` or `release-*`, or when a GitHub Release is published, it also attaches the compiled builds to the GitHub Release. The release is therefore not limited to GitHub's automatic source-code archives.
 
-Generated deliverables are named like:
+Release assets include:
 
 ```text
 CobolDocumentor-v1.0.0-linux-x64.zip
 CobolDocumentor-v1.0.0-win-x64.zip
+SHA256SUMS.txt
 ```
+
+The ZIP files contain the published self-contained CLI executable and the README. `SHA256SUMS.txt` contains checksums for the binary assets.
+
+## Creating a binary release
+
+Create and push a tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The CI will build the Windows and Linux binaries, create or update the GitHub Release for that tag, and upload the compiled ZIP files plus `SHA256SUMS.txt`.
