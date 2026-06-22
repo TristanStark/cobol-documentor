@@ -10,6 +10,9 @@ on:
     tags:
       - "v*"
       - "release-*"
+  release:
+    types:
+      - published
   workflow_dispatch:
 
 permissions:
@@ -59,7 +62,7 @@ jobs:
           if-no-files-found: ignore
 
   deliverables:
-    name: Publish deliverables
+    name: Publish compiled builds
     runs-on: ubuntu-latest
     needs: build-test
     strategy:
@@ -82,7 +85,9 @@ jobs:
         id: version
         shell: bash
         run: |
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            echo "value=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
             echo "value=pr-${{ github.event.pull_request.number }}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
@@ -90,7 +95,7 @@ jobs:
             echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish CLI
+      - name: Publish self-contained CLI build
         run: >-
           dotnet publish src/CobolDocumentor.Cli/CobolDocumentor.Cli.csproj
           --configuration Release
@@ -102,20 +107,25 @@ jobs:
           -p:DebugSymbols=false
           --output publish/${{ matrix.runtime }}
 
-      - name: Add documentation to deliverable
+      - name: Ensure Linux executable bit
+        if: matrix.runtime == 'linux-x64'
+        shell: bash
+        run: chmod +x publish/${{ matrix.runtime }}/CobolDocumentor.Cli || true
+
+      - name: Add documentation to build package
         shell: bash
         run: |
           cp README.md publish/${{ matrix.runtime }}/README.md
           cp CobolDocumentor.CSharp.sln publish/${{ matrix.runtime }}/CobolDocumentor.CSharp.sln
 
-      - name: Create ZIP deliverable
+      - name: Create ZIP build package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           $name = "CobolDocumentor-${{ steps.version.outputs.value }}-${{ matrix.runtime }}.zip"
           Compress-Archive -Path "publish/${{ matrix.runtime }}/*" -DestinationPath "dist/$name" -Force
 
-      - name: Upload PR/tag deliverable artifact
+      - name: Upload compiled build artifact
         uses: actions/upload-artifact@v4
         with:
           name: CobolDocumentor-${{ steps.version.outputs.value }}-${{ matrix.runtime }}
@@ -123,27 +133,39 @@ jobs:
           if-no-files-found: error
 
   release:
-    name: Create GitHub release
+    name: Release compiled builds
     runs-on: ubuntu-latest
     needs: deliverables
-    if: github.ref_type == 'tag'
+    if: github.ref_type == 'tag' || github.event_name == 'release'
 
     steps:
-      - name: Download deliverables
+      - name: Download compiled build artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: CobolDocumentor-${{ github.ref_name }}-*
+          pattern: CobolDocumentor-*
           path: dist
           merge-multiple: true
 
-      - name: Create or update release
+      - name: Create checksums
+        shell: bash
+        run: |
+          cd dist
+          sha256sum *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create or update GitHub release with compiled builds
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          tag="${GITHUB_REF_NAME}"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/*.zip --clobber
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            tag="${{ github.event.release.tag_name }}"
           else
-            gh release create "$tag" dist/*.zip --title "$tag" --generate-notes
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/*.zip dist/SHA256SUMS.txt --clobber
+          else
+            gh release create "$tag" dist/*.zip dist/SHA256SUMS.txt --title "$tag" --generate-notes
           fi
