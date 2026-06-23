@@ -38,6 +38,7 @@ COBOL source or source folder
 - Recursive copybook index over `.cpy`, `.cpm`, `.cpx`, `.copy`.
 - Recursive `COPY` expansion with max-depth guard.
 - Basic `COPY ... REPLACING ...` support, including fixed-format COPY lines.
+- Exploration-only mode for collecting missing copybooks without aborting the run.
 - DATA DIVISION groups.
 - Level-88 conditions.
 - `REDEFINES`.
@@ -71,6 +72,28 @@ With a standalone HTML graph for one program:
 ```bash
 dotnet run --project src/CobolDocumentor.Cli -- path/to/program.cbl --graphify-out out/graphify.json --html-out out/graph.html
 ```
+
+Exploration-only mode, used to find all missing copybooks in one pass:
+
+```bash
+dotnet run --project src/CobolDocumentor.Cli -- path/to/source-root --copy-root path/to/partial-copy-root --exploration-only
+```
+
+Alias:
+
+```bash
+dotnet run --project src/CobolDocumentor.Cli -- path/to/source-root --copy-root path/to/partial-copy-root --explore-only
+```
+
+In exploration-only mode, the CLI does not fail when a `COPY` cannot be resolved. It preserves the unresolved `COPY` line, continues scanning available sources and copybooks, disables graph exports, and prints a final `Missing COPY report` to stdout.
+
+The final report contains:
+
+- the unique COPY names to retrieve;
+- the total number of missing COPY occurrences;
+- the source file where each missing COPY was encountered;
+- the nested COPY depth when the missing reference came from another copybook;
+- the normalized COPY statement.
 
 ## Build and test from source
 
@@ -111,11 +134,12 @@ dotnet publish src/CobolDocumentor.Cli/CobolDocumentor.Cli.csproj \
 The workflow `.github/workflows/dotnet-deliverables.yml` runs on:
 
 - pull requests targeting `master`, `main`, or `feature/**`;
+- pushes to `master` or `main`;
 - pushed tags matching `v*` or `release-*`;
 - published GitHub Releases;
 - manual dispatch.
 
-For pull requests, it:
+For pull requests and main-branch pushes, it:
 
 - restores, builds, and tests the C# solution;
 - uploads the build log and xUnit/TRX test results;
