@@ -61,10 +61,11 @@ public sealed class RecursiveDiscoveryAndCopiesTests : IDisposable
 
         var program = loader.Load(programFile);
         var missingNames = resolver.MissingCopies.Select(copy => copy.CopyName).OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray();
+        var expectedMissingNames = new[] { "NESTED-MISSING", "TOP-MISSING" };
 
         Assert.Equal("EXPLORE", program.Name);
         Assert.True(program.MemoryStack.Contains("FOUND-FIELD"));
-        Assert.Equal(new[] { "NESTED-MISSING", "TOP-MISSING" }, missingNames);
+        Assert.True(expectedMissingNames.SequenceEqual(missingNames));
         Assert.True(resolver.MissingCopies.Any(copy => copy.SourceFile.EndsWith("FOUNDCPY.cpy", StringComparison.OrdinalIgnoreCase)));
         Assert.True(resolver.MissingCopies.Any(copy => copy.SourceFile.EndsWith("explore.cbl", StringComparison.OrdinalIgnoreCase)));
     }
