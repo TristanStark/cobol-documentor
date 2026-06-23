@@ -60,13 +60,13 @@ public sealed class RecursiveDiscoveryAndCopiesTests : IDisposable
         var loader = new CobolProgramLoader(resolver);
 
         var program = loader.Load(programFile);
-        var missingNames = resolver.MissingCopies.Select(copy => copy.CopyName).Order(StringComparer.OrdinalIgnoreCase).ToArray();
+        var missingNames = resolver.MissingCopies.Select(copy => copy.CopyName).OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray();
 
         Assert.Equal("EXPLORE", program.Name);
         Assert.True(program.MemoryStack.Contains("FOUND-FIELD"));
-        Assert.Equal(["NESTED-MISSING", "TOP-MISSING"], missingNames);
-        Assert.Contains(resolver.MissingCopies, copy => copy.SourceFile.EndsWith("FOUNDCPY.cpy", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(resolver.MissingCopies, copy => copy.SourceFile.EndsWith("explore.cbl", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(new[] { "NESTED-MISSING", "TOP-MISSING" }, missingNames);
+        Assert.True(resolver.MissingCopies.Any(copy => copy.SourceFile.EndsWith("FOUNDCPY.cpy", StringComparison.OrdinalIgnoreCase)));
+        Assert.True(resolver.MissingCopies.Any(copy => copy.SourceFile.EndsWith("explore.cbl", StringComparison.OrdinalIgnoreCase)));
     }
 
     public void Dispose()
