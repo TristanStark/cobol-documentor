@@ -49,6 +49,26 @@ public sealed class RecursiveDiscoveryAndCopiesTests : IDisposable
         Assert.True(graph.Edges.Any(edge => edge["target"]?.ToString() == "variable:ws-alt" && edge["relation"]?.ToString() == "references"));
     }
 
+    [Fact]
+    public void ExplorationModeCollectsMissingCopiesWithoutThrowing()
+    {
+        Write("copies/FOUNDCPY.cpy", "       01 FOUND-AREA.\n          05 FOUND-FIELD PIC X(01).\n       COPY NESTED-MISSING.\n");
+        var programFile = Write("programs/sub/explore.cbl", "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. EXPLORE.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       COPY FOUNDCPY.\n       COPY TOP-MISSING.\n       PROCEDURE DIVISION.\n       0000-MAIN.\n           GOBACK.\n");
+        var resolver = new CopyResolver(
+            new CopyLookup(_root),
+            new CopyResolverOptions { ContinueOnMissingCopy = true });
+        var loader = new CobolProgramLoader(resolver);
+
+        var program = loader.Load(programFile);
+        var missingNames = resolver.MissingCopies.Select(copy => copy.CopyName).Order(StringComparer.OrdinalIgnoreCase).ToArray();
+
+        Assert.Equal("EXPLORE", program.Name);
+        Assert.True(program.MemoryStack.Contains("FOUND-FIELD"));
+        Assert.Equal(["NESTED-MISSING", "TOP-MISSING"], missingNames);
+        Assert.Contains(resolver.MissingCopies, copy => copy.SourceFile.EndsWith("FOUNDCPY.cpy", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(resolver.MissingCopies, copy => copy.SourceFile.EndsWith("explore.cbl", StringComparison.OrdinalIgnoreCase));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))
