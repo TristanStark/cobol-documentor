@@ -70,6 +70,23 @@ public sealed class RecursiveDiscoveryAndCopiesTests : IDisposable
         Assert.True(resolver.MissingCopies.Any(copy => copy.SourceFile.EndsWith("explore.cbl", StringComparison.OrdinalIgnoreCase)));
     }
 
+    [Fact]
+    public void SuffixedCopyNameUsesOriginalCopyInsteadOfBeingReportedMissing()
+    {
+        Write("copies/YCOPIE.cpy", "       01 SUFFIXED-AREA.\n          05 SUFFIXED-FIELD PIC X(01).\n");
+        var programFile = Write("programs/sub/suffixed.cbl", "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. SUFFIXED.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       COPY YCOPIEA.\n       PROCEDURE DIVISION.\n       0000-MAIN.\n           GOBACK.\n");
+        var resolver = new CopyResolver(
+            new CopyLookup(_root),
+            new CopyResolverOptions { ContinueOnMissingCopy = true });
+        var loader = new CobolProgramLoader(resolver);
+
+        var program = loader.Load(programFile);
+
+        Assert.Equal("SUFFIXED", program.Name);
+        Assert.True(program.MemoryStack.Contains("SUFFIXED-FIELD"));
+        Assert.Empty(resolver.MissingCopies);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))
