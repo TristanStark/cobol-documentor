@@ -38,6 +38,7 @@ COBOL source or source folder
 - Recursive copybook index over `.cpy`, `.cpm`, `.cpx`, `.copy`.
 - Recursive `COPY` expansion with max-depth guard.
 - Basic `COPY ... REPLACING ...` support, including fixed-format COPY lines.
+- Suffixed copybook alias resolution: if `YCOPIEA`, `YCOPIEL`, or `YCOPIE123` is requested and only `YCOPIE` exists, the existing copybook is reused instead of being reported missing.
 - Exploration-only mode for collecting missing copybooks without aborting the run.
 - DATA DIVISION groups.
 - Level-88 conditions.
