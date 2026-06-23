@@ -36,7 +36,7 @@ public sealed class CopyLookup
                 continue;
             }
 
-            var name = Path.GetFileNameWithoutExtension(file).ToUpperInvariant();
+            var name = NormalizeCopyName(Path.GetFileNameWithoutExtension(file));
             if (_index.ContainsKey(name))
             {
                 throw new InvalidOperationException($"COPY collision for {name}: {_index[name]} and {file}");
@@ -49,7 +49,7 @@ public sealed class CopyLookup
     /// <summary>Resolves a COPY name to a file path.</summary>
     public string Resolve(string copyName)
     {
-        var normalized = copyName.Trim().Trim('"', '\'', '.').ToUpperInvariant();
+        var normalized = NormalizeCopyName(copyName);
         if (_index.TryGetValue(normalized, out var path))
         {
             return path;
@@ -57,28 +57,56 @@ public sealed class CopyLookup
 
         throw new FileNotFoundException($"COPY not found: {normalized}");
     }
+
+    /// <summary>Tries to resolve a COPY name to a file path.</summary>
+    public bool TryResolve(string copyName, out string? path)
+    {
+        return _index.TryGetValue(NormalizeCopyName(copyName), out path);
+    }
+
+    /// <summary>Normalizes a COPY name in the same way as the lookup index.</summary>
+    public static string NormalizeCopyName(string copyName) => copyName.Trim().Trim('"', '\'', '.').ToUpperInvariant();
 }
+
+/// <summary>Controls COPY expansion behavior.</summary>
+public sealed class CopyResolverOptions
+{
+    /// <summary>When true, missing COPY statements are preserved and recorded instead of throwing.</summary>
+    public bool ContinueOnMissingCopy { get; init; }
+}
+
+/// <summary>Represents one unresolved COPY reference found during exploration.</summary>
+public sealed record MissingCopyReference(string CopyName, string SourceFile, int Depth, string Statement);
 
 /// <summary>Expands COPY statements using a <see cref="CopyLookup" />.</summary>
 public sealed class CopyResolver
 {
     private const int MaxCopyDepth = 32;
     private readonly CopyLookup? _lookup;
+    private readonly CopyResolverOptions _options;
+    private readonly List<MissingCopyReference> _missingCopies = [];
 
     /// <summary>Creates a resolver. Without lookup, COPY statements are preserved.</summary>
-    public CopyResolver(CopyLookup? lookup = null) => _lookup = lookup;
+    public CopyResolver(CopyLookup? lookup = null, CopyResolverOptions? options = null)
+    {
+        _lookup = lookup;
+        _options = options ?? new CopyResolverOptions();
+    }
+
+    /// <summary>Missing COPY references collected during tolerant exploration.</summary>
+    public IReadOnlyList<MissingCopyReference> MissingCopies => _missingCopies;
 
     /// <summary>Expands COPY statements in a source file while preserving non-COPY lines.</summary>
     public IReadOnlyList<string> ExpandFile(string sourceFile)
     {
         var lines = File.ReadAllLines(sourceFile).Select(line => line + Environment.NewLine).ToArray();
-        return ExpandLines(lines);
+        return ExpandLines(lines, 0, Path.GetFullPath(sourceFile));
     }
 
     /// <summary>Expands COPY statements in physical source lines.</summary>
-    public IReadOnlyList<string> ExpandLines(IReadOnlyList<string> lines) => ExpandLines(lines, 0);
+    public IReadOnlyList<string> ExpandLines(IReadOnlyList<string> lines) => ExpandLines(lines, 0, string.Empty);
 
-    private IReadOnlyList<string> ExpandLines(IReadOnlyList<string> lines, int depth)
+    private IReadOnlyList<string> ExpandLines(IReadOnlyList<string> lines, int depth, string sourceFile)
     {
         if (depth > MaxCopyDepth)
         {
@@ -98,7 +126,7 @@ public sealed class CopyResolver
                 buffer.Add(line);
                 if (line.Contains('.'))
                 {
-                    FlushCopy(output, buffer, depth);
+                    FlushCopy(output, buffer, depth, sourceFile);
                     inCopy = false;
                 }
 
@@ -110,7 +138,7 @@ public sealed class CopyResolver
                 buffer.Add(line);
                 if (line.Contains('.'))
                 {
-                    FlushCopy(output, buffer, depth);
+                    FlushCopy(output, buffer, depth, sourceFile);
                     inCopy = false;
                 }
 
@@ -128,7 +156,7 @@ public sealed class CopyResolver
         return output;
     }
 
-    private void FlushCopy(List<string> output, List<string> buffer, int depth)
+    private void FlushCopy(List<string> output, List<string> buffer, int depth, string sourceFile)
     {
         if (_lookup is null)
         {
@@ -139,7 +167,20 @@ public sealed class CopyResolver
 
         var statement = string.Concat(buffer.Where(line => !IsCommentLine(line)).Select(CobolCondenser.StripSequenceArea));
         var parsed = ParseCopyStatement(statement);
-        var copyPath = _lookup.Resolve(parsed.CopyName);
+        if (!_lookup.TryResolve(parsed.CopyName, out var copyPath))
+        {
+            var normalizedCopyName = CopyLookup.NormalizeCopyName(parsed.CopyName);
+            if (!_options.ContinueOnMissingCopy)
+            {
+                throw new FileNotFoundException($"COPY not found: {normalizedCopyName}");
+            }
+
+            _missingCopies.Add(new MissingCopyReference(normalizedCopyName, sourceFile, depth, CollapseWhitespace(statement)));
+            output.AddRange(buffer);
+            buffer.Clear();
+            return;
+        }
+
         var content = File.ReadAllText(copyPath);
         foreach (var replacement in parsed.Replacements)
         {
@@ -148,12 +189,14 @@ public sealed class CopyResolver
                 : Regex.Replace(content, $"(?<![A-Za-z0-9-]){Regex.Escape(replacement.OldValue)}(?![A-Za-z0-9-])", replacement.NewValue);
         }
 
-        var expanded = ExpandLines(content.SplitLines(keepEnds: true).ToArray(), depth + 1);
+        var expanded = ExpandLines(content.SplitLines(keepEnds: true).ToArray(), depth + 1, Path.GetFullPath(copyPath));
         output.AddRange(expanded);
         buffer.Clear();
     }
 
     private static bool IsCommentLine(string line) => line.Length >= 7 && (line[6] == '*' || line[6] == '/' || line[6] == 'D');
+
+    private static string CollapseWhitespace(string text) => Regex.Replace(text.Trim(), "\\s+", " ");
 
     private static ParsedCopy ParseCopyStatement(string statement)
     {
