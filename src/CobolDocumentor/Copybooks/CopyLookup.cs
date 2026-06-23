@@ -49,23 +49,56 @@ public sealed class CopyLookup
     /// <summary>Resolves a COPY name to a file path.</summary>
     public string Resolve(string copyName)
     {
-        var normalized = NormalizeCopyName(copyName);
-        if (_index.TryGetValue(normalized, out var path))
+        if (TryResolve(copyName, out var path) && path is not null)
         {
             return path;
         }
 
-        throw new FileNotFoundException($"COPY not found: {normalized}");
+        throw new FileNotFoundException($"COPY not found: {NormalizeCopyName(copyName)}");
     }
 
     /// <summary>Tries to resolve a COPY name to a file path.</summary>
     public bool TryResolve(string copyName, out string? path)
     {
-        return _index.TryGetValue(NormalizeCopyName(copyName), out path);
+        var normalized = NormalizeCopyName(copyName);
+        if (_index.TryGetValue(normalized, out path))
+        {
+            return true;
+        }
+
+        return TryResolveSuffixedAlias(normalized, out path);
     }
 
     /// <summary>Normalizes a COPY name in the same way as the lookup index.</summary>
     public static string NormalizeCopyName(string copyName) => copyName.Trim().Trim('"', '\'', '.').ToUpperInvariant();
+
+    private bool TryResolveSuffixedAlias(string normalizedCopyName, out string? path)
+    {
+        foreach (var candidate in _index.Keys.OrderByDescending(key => key.Length).ThenBy(key => key, StringComparer.OrdinalIgnoreCase))
+        {
+            if (candidate.Length >= normalizedCopyName.Length)
+            {
+                continue;
+            }
+
+            if (!normalizedCopyName.StartsWith(candidate, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var suffix = normalizedCopyName[candidate.Length..];
+            if (suffix.Length == 0 || !suffix.All(char.IsLetterOrDigit))
+            {
+                continue;
+            }
+
+            path = _index[candidate];
+            return true;
+        }
+
+        path = null;
+        return false;
+    }
 }
 
 /// <summary>Controls COPY expansion behavior.</summary>
